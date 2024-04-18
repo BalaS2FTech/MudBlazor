@@ -1,0 +1,240 @@
+﻿@page "/ManageQuotes/{id}"
+@inject Services.IQuoteService quoteservice
+@using Models
+@using MudBlazor;
+@inject IJSRuntime JSRuntime
+@using Newtonsoft.Json;
+
+<div class="container" style="display: flex; justify-content: center; align-items: center; height: 100vh;">
+    <div class="row">
+        <form @onsubmit="SubmitQuote"  style="padding: 20px; background:linear-gradient(to bottom,
+#ff9999, #18817c); color: white; border-radius: 10px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); max-width: 500px; width: 550px; margin-top: -50px;">
+            <!-- Author Input Field -->
+            <div class="mb-3">
+                <label id="Author" for="Author" style="font-weight: bold; margin-bottom: 5px;">Author</label>
+                <input type="text" @bind="@quote.Author" id="Author" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box;">
+            </div>
+
+            <div class="icon">
+                <span @onclick="AddTag" class="oi oi-plus" style="margin-left:438px;"></span>
+            </div>
+            @foreach (var tagInput in tagsValues)
+            {
+                <div class="mb-3">
+                    <label id="@($"{tagInput.Id}")" for="Tags" style="font-weight: bold; margin-bottom: 5px;">Tags@($"{tagInput.Id}")</label>
+                    <input type="text" @bind="@tagInput.tags" id="@($"Tag_{tagInput.Id}")" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box;">
+                    <span @onclick="(Action)(() => RemoveTag(tagInput.Id))" class="oi oi-minus" style="margin-left:438px;" aria-hidden="true"></span>
+
+                </div>
+            }
+
+
+            <div class="icon">
+                <span @onclick="AddQuote" class="oi oi-plus" style="margin-left:438px;"> </span>
+            </div>
+
+
+            
+            @foreach (var quoteValue in QuoteValues)
+            {
+                <div class="mb-3">
+                    <label id="@($"{quoteValue.Id}")" for="QuoteText" style="font-weight: bold; margin-bottom: 5px;">Quotes@($"{quoteValue.Id}")</label>
+                    <textarea @bind="@quoteValue.quotes" id="@($"Tag_{quoteValue.Id}")" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box;" rows="5"></textarea>
+                    <span @onclick="(Action)(() => RemoveTag(quoteValue.Id))" class="oi oi-minus" style="margin-left:438px;" aria-hidden="true"></span>
+                </div>
+                
+            }
+
+            
+            
+            
+            @if (ID == "0")
+            {
+            <div>
+                    <button type="submit" style="background-color: #ffffff;
+    box-shadow: blue;
+    border-radius: 16px;
+    width: 150px;
+    margin-left: 175px;">
+                        Submit
+                    </button>
+            </div>
+            }
+            @if (ID != "0")
+            {
+                <div>
+                    <button type="submit">Update</button>
+                </div>
+            }
+            </form>
+    </div>
+   @*  <div class="row">
+    <div class="col-md-8">
+
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th scope="col">#</th>
+                        <th scope="col">Author</th>
+                        <th scope="col">Tags</th>
+                        <th scope="col">QuoteText</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var data in quotes)
+                    {
+                        <tr>
+                            <th>@data.Id</th>
+                            <td>@data.Author</td>
+                            <td>@data.Tags</td>
+                            <td>@data.QuoteText</td>
+                        </tr>
+
+                    }
+                    
+                    
+                </tbody>
+            </table>
+    </div>
+    </div> *@
+
+</div>
+
+@code {
+    Quote quote = new Quote();
+
+    List<Quote> quoteSelect = new List<Quote>();
+    List<TagsModel> tagsValues = new List<TagsModel>();
+    List<QuotesModel> QuoteValues = new List<QuotesModel>();
+    [Parameter]
+    public string ID { get; set; }
+    public string TagsStatus { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        quoteSelect = await quoteservice.GetAllQuotes();
+        if (!string.IsNullOrEmpty(ID))
+        {
+            int tagNo = int.Parse(ID);
+            if (tagNo == 0)
+            {
+                tagsValues.Add(new TagsModel { Id = 1 });
+                QuoteValues.Add(new QuotesModel { Id = 1 });
+            }
+            else
+            {
+
+                // Retrieve tag information based on tagId and populate the fields
+                var selectRecord = quoteSelect.Where(i => i.Id == tagNo).FirstOrDefault();
+                if (selectRecord != null)
+                {
+                    quote = selectRecord;
+                    TagsStatus = quote.Action;
+                    
+                    var tagList = JsonConvert.DeserializeObject<List<string>>(quote.Tags);
+                    tagsValues.Clear();
+                    foreach (var tag in tagList)
+                    {
+                        tagsValues.Add(new TagsModel { Id = tagsValues.Count + 1, tags = tag });
+                    }
+                    
+                    var quotesList = JsonConvert.DeserializeObject<List<string>>(quote.QuoteText);
+                    QuoteValues.Clear();
+                    foreach (var quote in quotesList)
+                    {
+                        QuoteValues.Add(new QuotesModel { Id = QuoteValues.Count + 1, quotes = quote });
+                    }
+                    
+                }
+            }
+        }
+    }
+
+    void AddTag()
+    {
+        int newId = tagsValues.Count > 0 ? tagsValues.Max(t => t.Id) + 1 : 1;
+        tagsValues.Add(new TagsModel { Id = newId });
+    }
+
+    void AddQuote()
+    {
+        int newId = QuoteValues.Count > 0 ? QuoteValues.Max(t => t.Id) + 1 : 1;
+        QuoteValues.Add(new QuotesModel { Id = newId });
+    }
+    void RemoveTag(int id)
+    {
+       
+        var tagToRemove = tagsValues.FirstOrDefault(t => t.Id == id);
+        if (tagToRemove != null)
+        {
+            tagsValues.Remove(tagToRemove);
+            return;
+        }
+
+       
+        var quoteToRemove = QuoteValues.FirstOrDefault(q => q.Id == id);
+        if (quoteToRemove != null)
+        {
+            QuoteValues.Remove(quoteToRemove);
+            return;
+        }
+    }
+
+    public async Task AddRecord()
+    {
+        await quoteservice.AddNewQuote(quote);
+        
+        quote = new Quote();
+    }
+    async Task SubmitQuote()
+    {
+        if (string.IsNullOrEmpty(quote.Author))
+        {
+            await JSRuntime.InvokeVoidAsync("alert", "Please enter the Author Name");
+            return;
+        }
+
+        foreach (var tagInput in tagsValues)
+        {
+            if (string.IsNullOrEmpty(tagInput.tags))
+            {
+                await JSRuntime.InvokeVoidAsync("alert", $"Please enter tags for Tag {tagInput.Id}");
+                return;
+            }
+        }
+
+        foreach (var quoteValue in QuoteValues)
+        {
+            if (string.IsNullOrEmpty(quoteValue.quotes))
+            {
+                await JSRuntime.InvokeVoidAsync("alert", $"Please enter quotes for Quotes {quoteValue.Id}");
+                return;
+            }
+        }
+
+        string tagValues = JsonConvert.SerializeObject(tagsValues.Select(t => t.tags));
+        quote.Tags = tagValues;
+
+        string QuotesValues = JsonConvert.SerializeObject(QuoteValues.Select(t => t.quotes));
+        quote.QuoteText = QuotesValues;
+
+        if (ID != "0")
+        {
+            quote.Action = TagsStatus;
+            await quoteservice.UpdateQuotes(quote);
+            await JSRuntime.InvokeVoidAsync("alert", "Quotes updated successfully!");
+        }
+        if (ID == "0")
+        {
+            quote.Action = "Active";
+            await quoteservice.UpdateQuotes(quote);
+            await JSRuntime.InvokeVoidAsync("alert", "Quotes added successfully!");
+        }
+        quote = new Quote();
+        tagsValues.Clear();
+        QuoteValues.Clear();
+        tagsValues.Add(new TagsModel { Id = 1 });
+        QuoteValues.Add(new QuotesModel { Id = 1 });
+        ID = "0";
+    }
+}

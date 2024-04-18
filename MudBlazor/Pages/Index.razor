@@ -1,0 +1,108 @@
+﻿@page "/"
+@inject Services.IQuoteService quoteservice
+@using Models
+@using System.Net.Http.Json
+@inject IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager
+@using MudBlazor
+
+
+<div class="row">
+    <div class="col-md-8" style="margin-top: 100px;
+    margin-left: -10px;
+    flex: 0 0 auto;
+    width: 100%;">
+        <input type="text" @bind="search" @oninput="Text" placeholder="Search by Author" class="form-control" style="margin-bottom: 40px;width: 352px" />
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th scope="col">S.No</th>
+                    <th scope="col">Author</th>
+                    <th scope="col">Tags</th>
+                    <th scope="col">QuoteText</th>
+                    <th scope="col">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var data in filtered)
+                {
+                    <tr>
+                        <th>@data.Id</th>
+                        <td>@data.Author</td>
+                        <td>@data.Tags</td>
+                        <td>@data.QuoteText</td>
+                        <td>
+                            <button @onclick="() => EditQuote(data.Id)" class="btn btn-link">
+                                <i class="material-icons">edit</i>
+                            </button>
+                            <button @onclick="() => ShowDeleteConfirmationDialog(data.Id)" class="btn btn-link">
+                                <i class="material-icons">delete</i>
+                            </button>
+                        </td>
+                    </tr>
+
+                }
+
+
+            </tbody>
+        </table>
+    </div>
+</div>
+
+
+@code {
+    // Quotes quotes = new Quotes();
+    
+    List<Quote> quote = new List<Quote>();
+    string search = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        quote = await quoteservice.GetAllQuotes();
+    }
+    private async Task EditQuote(int id)
+    {
+        var selectRecord = quote.Where(i => i.Id == id).FirstOrDefault();
+        if (selectRecord != null)
+        {
+            NavigationManager.NavigateTo($"/ManageQuotes/{selectRecord.Id}");
+        }
+    }
+    private async Task ShowDeleteConfirmationDialog(int id)
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to delete this record?");
+        if (confirmed)
+        {
+            await DeleteQuote(id);
+        }
+    }
+    private async Task DeleteQuote(int id)
+    {
+
+        await quoteservice.DeleteQuotes(id);
+        quote = await quoteservice.GetAllQuotes();
+        StateHasChanged();
+
+    }
+    private async Task Text(ChangeEventArgs e)
+    {
+        search = e.Value.ToString();
+        await InvokeAsync(() => StateHasChanged());
+    }
+    private List<Quote> filtered
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(search))
+                return quote.OrderBy(q => q.Author).ToList();
+            else
+                
+            return quote.Where(q => q.Author.ToLower().Contains(search.ToLower()) ||
+                q.Tags.ToLower().Contains(search.ToLower()) || q.QuoteText.ToLower().Contains(search.ToLower()) || q.Id.ToString().Contains(search))
+                .OrderBy(q => q.Id)
+                .ToList();
+        }
+    }
+    
+   
+}
